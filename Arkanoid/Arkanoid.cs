@@ -15,15 +15,22 @@ namespace Arkanoid
         private const int BallSize = 40;
         private float ballPositionX;
         private float ballPositionY;
-        private int ballDirectionsX = 1;
-        private int ballDirectionsY = 1;
+        private float ballVelocityX = 3f;
+        private float ballVelocityY = -4f;
         private int platformStratPositionX;
         private int platformStratPositionY;
         private const int platformSizeX = 150;
         private const int platformSizeY = 50;
         private int lives = 3;
         private bool isGameOver = false;
+        private bool isGameStarted = false;
+        private const int LivesBarHeight = 30;
+        private const int HeartSize= 24;
+        private const int HeartSpacing =8;
+        private const int  LivesPaddingRight = 20;
+        private const int LivesPaddingTop = 3;
 
+        private Random random = new();
         private Bitmap bufferBitmap = null!;
         private Graphics bufferGraphics = null!;
         private float deltaTime;
@@ -52,7 +59,6 @@ namespace Arkanoid
             animationTimer = new System.Windows.Forms.Timer();
             animationTimer.Interval = IntervalTimer;
             animationTimer.Tick += AnimationTimer_Tick;
-            animationTimer.Start();
 
             this.Paint += Arkanoid_Paint;
             this.Load += Arkanoid_Load;
@@ -72,8 +78,7 @@ namespace Arkanoid
             platformStratPositionX = (this.ClientSize.Width - platformSizeX) / 2;
             platformStratPositionY = this.ClientSize.Height - platformSizeY;
 
-            ballDirectionsX = 1;
-            ballDirectionsY = -1;
+            ShowStartScreen();
         }
 
         private void Arkanoid_Paint(object? sender, PaintEventArgs e)
@@ -83,7 +88,7 @@ namespace Arkanoid
 
         private void AnimationTimer_Tick(object? sender, EventArgs e)
         {
-            if (isGameOver)
+            if (!isGameStarted|| isGameOver)
             {
                 return;
             }
@@ -108,24 +113,24 @@ namespace Arkanoid
 
         private void MoveBall(float frameMultiplier)
         {
-            ballPositionX += BallSpeed * frameMultiplier * ballDirectionsX;
-            ballPositionY += BallSpeed * frameMultiplier * ballDirectionsY;
+            ballPositionX += ballVelocityX * frameMultiplier;
+            ballPositionY += ballVelocityY * frameMultiplier;
         
             if (ballPositionX <= 0)
             {
-                ballPositionX = -ballPositionX;
-                ballDirectionsX = 1;
+                ballPositionX = 0;
+                ballVelocityX = -ballVelocityX;
             }
             else if (ballPositionX >= Width - BallSize)
             {
-                ballPositionX = 2 * (Width - BallSize) - ballPositionX;
-                ballDirectionsX = -1;
+                ballPositionX = ClientSize.Width - BallSize;
+                ballVelocityX = -ballVelocityX;
             }
 
-            if (ballPositionY <= 0)
+            if (ballPositionY <= LivesBarHeight)
             {
-                ballPositionY = -ballPositionY;
-                ballDirectionsY = 1;
+                ballPositionY = LivesBarHeight;
+                ballVelocityY = -ballVelocityY;
             }
             
             if (ballPositionY >= this.ClientSize.Height)
@@ -133,6 +138,8 @@ namespace Arkanoid
                 lives--;
                 if (lives <= 0)
                 {
+                    DrawFrame();
+                    this.Refresh();
                     GameOver();
                 }
                 else
@@ -160,6 +167,33 @@ namespace Arkanoid
             bufferGraphics.DrawImage(Properties.Resources.platform, 
                 platformStratPositionX, platformStratPositionY, 
                 platformSizeX, platformSizeY);
+
+            DrawLives();
+        }
+
+        private void DrawLives()
+        {
+            using (SolidBrush barBrush = new SolidBrush(Color.FromArgb(40, 40, 40)))
+            {
+                bufferGraphics.FillRectangle(barBrush, 0, 0, 
+                    ClientSize.Width, LivesBarHeight);
+            }
+
+            using (Pen linePen = new Pen(Color.FromArgb(80, 80, 80), 2))
+            {
+                bufferGraphics.DrawLine(linePen, 0, LivesBarHeight,
+                    ClientSize.Width, LivesBarHeight);
+            }
+
+            for (int i = 0; i < lives; i++)
+            {
+                int x = ClientSize.Width - LivesPaddingRight - (i + 1) *
+                    HeartSize - i * HeartSpacing;
+                int y = LivesPaddingTop;
+
+                bufferGraphics.DrawImage(Properties.Resources.heart, x, y,
+                    HeartSize, HeartSize);
+            }
         }
 
         private void Arkanoid_MouseMove(object? sender, MouseEventArgs e)
@@ -174,11 +208,6 @@ namespace Arkanoid
 
         private void CheckPlatformCollision()
         {
-            if (platformStratPositionY <= 0)
-            {
-                return;
-            }
-
             var ballRect = new RectangleF(ballPositionX, ballPositionY,
                 BallSize, BallSize);
             var platformRect = new RectangleF(
@@ -187,18 +216,18 @@ namespace Arkanoid
                 platformSizeX,
                 platformSizeY);
 
-            if (ballRect.IntersectsWith(platformRect))
+            if (ballRect.IntersectsWith(platformRect) && ballVelocityY > 0)
             {
                 ballPositionY = platformStratPositionY - BallSize;
-                ballDirectionsY = -1;
 
-                float hitPosition = (ballPositionX + BallSize / 2f - 
+                float hitFactor = (ballPositionX + BallSize / 2f - 
                     platformStratPositionX) / platformSizeX;
+                hitFactor = hitFactor * 2f - 1f;
 
-                ballDirectionsX = hitPosition > 0.5f ? 1 : -1;
+                float maxAngelFactor = 0.8f;
+                ballVelocityX = hitFactor * BallSpeed * maxAngelFactor;
 
-                float angel = (hitPosition - 0.5f) * 2f;
-                ballDirectionsX = Math.Sign(angel);
+                ballVelocityY = -MathF.Sqrt(MathF.Max(0, BallSpeed * BallSpeed - ballVelocityX * ballVelocityX));
             }
         }
 
@@ -228,17 +257,50 @@ namespace Arkanoid
             this.Refresh();
         }
 
+        private void ShowStartScreen()
+        {
+            bufferGraphics.Clear(this.BackColor);
+
+            using (Font titleFont = new Font("Arial", 36, FontStyle.Bold))
+            using (SolidBrush titleBrush = new SolidBrush(Color.Black))
+            using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+            {
+                bufferGraphics.DrawString("ARKONOID", titleFont, titleBrush,
+                    ClientSize.Width / 2, ClientSize.Height / 2, sf);
+            }
+
+            using (Font font = new Font("Arial", 12))
+            using (SolidBrush brush = new SolidBrush(Color.Black))
+            using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center })
+            {
+                bufferGraphics.DrawString("Нажми ПРОБЕЛ для старта\nESC для выхода", font, brush,
+                    ClientSize.Width / 2, ClientSize.Height / 2 + 30, sf);
+            }
+
+            this.Refresh();
+        }
+
         private void ResetBall()
         {
             ballPositionX = (this.ClientSize.Width / 2f) - (BallSize / 2f);
             ballPositionY = platformStratPositionY - BallSize - 5;
 
-            ballDirectionsX = (new Random().Next(0, 2) == 0) ? -1 : 1;
-            ballDirectionsY = -1;
+            float randomFactor = (float)(random.NextDouble() - 0.5) * 0.8f;
+
+            ballVelocityX = randomFactor * BallSpeed;
+            ballVelocityY = -MathF.Sqrt(MathF.Max(0, BallSpeed * BallSpeed - ballVelocityX * ballVelocityX));
         }
 
         private void Arkonoid_KeyDown(object? sender, KeyEventArgs e)
         {
+            if (e.KeyCode == Keys.Space && !isGameStarted)
+            {
+                isGameStarted = true;
+                LastFrameTime = DateTime.Now;
+                animationTimer.Start();
+                return;
+            }
+
             if (e.KeyCode == Keys.R && lives <= 0 &&
                 !animationTimer.Enabled)
             {
