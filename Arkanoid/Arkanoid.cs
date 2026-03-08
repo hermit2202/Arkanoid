@@ -13,22 +13,64 @@ namespace Arkanoid
         private const int IntervalTimer = 40;
         private const float BallSpeed = 5f;
         private const int BallSize = 40;
+
         private float ballPositionX;
         private float ballPositionY;
         private float ballVelocityX = 3f;
         private float ballVelocityY = -4f;
+
         private int platformStratPositionX;
         private int platformStratPositionY;
         private const int platformSizeX = 150;
         private const int platformSizeY = 50;
+
         private int lives = 3;
         private bool isGameOver = false;
         private bool isGameStarted = false;
+
         private const int LivesBarHeight = 30;
         private const int HeartSize= 24;
         private const int HeartSpacing =8;
         private const int  LivesPaddingRight = 20;
         private const int LivesPaddingTop = 3;
+
+        private List<Block> blocks = new();
+        private int currentLevel = 1;
+        private const int BlockWidth = 40;
+        private const int BlockHeight = 25;
+        private const int BlockPadding = 3;
+        private const int BlocksStartX = 35;
+        private const int BlocksStartY = 60;
+        private const int BlocksPerRow = 15;
+        private const int BlocksPerColumn = 6;
+
+        private readonly int[,,] levelLayouts = new int[, ,]
+        {
+            {
+                {1,1,2,2,1,1,2,2,1,1,2,2,1,1,1},
+                {2,2,3,3,2,2,3,3,2,2,3,3,2,2,2},
+                {1,1,2,2,1,1,2,2,1,1,2,2,1,1,1},
+                {0,1,1,2,2,1,1,2,2,1,1,2,2,1,0},
+                {0,0,1,1,1,1,1,1,1,1,1,1,1,0,0},
+                {0,0,0,1,1,1,1,1,1,1,1,1,0,0,0}
+            },
+            {
+                {2,2,3,3,3,2,2,3,3,3,2,2,3,3,3},
+             {  1,2,2,3,2,2,1,2,2,3,2,2,1,2,2},
+                {2,3,3,3,3,3,2,3,3,3,3,3,2,3,3},
+                {1,1,2,2,3,2,2,1,2,2,3,2,2,1,2},
+                {0,1,1,2,2,3,2,2,1,2,2,3,2,2,0},
+                {0,0,1,1,2,2,3,2,2,1,2,2,3,2,0}
+            },
+            {
+                {0,0,3,3,3,3,3,3,3,3,3,3,0,0,0},
+                {0,2,2,3,3,3,3,3,3,3,3,2,2,0,0},
+                {1,2,2,2,3,3,3,3,3,3,2,2,2,1,0},
+                {1,1,2,2,2,3,3,3,3,2,2,2,1,1,0},
+                {1,1,1,2,2,2,3,3,2,2,2,1,1,1,1},
+                {1,1,1,1,2,2,2,2,2,2,1,1,1,1,1}
+            }
+        };
 
         private Random random = new();
         private Bitmap bufferBitmap = null!;
@@ -38,7 +80,7 @@ namespace Arkanoid
         private System.Windows.Forms.Timer animationTimer;
 
         /// <summary>
-        /// 
+        /// Конструктор формы
         /// </summary>
         public Arkanoid()
         {
@@ -77,6 +119,8 @@ namespace Arkanoid
 
             platformStratPositionX = (this.ClientSize.Width - platformSizeX) / 2;
             platformStratPositionY = this.ClientSize.Height - platformSizeY;
+
+            LoadLevel(1);
 
             ShowStartScreen();
         }
@@ -150,6 +194,7 @@ namespace Arkanoid
             }
 
            CheckPlatformCollision();
+           CheckBlockCollisions();
         }
         
         private void DrawFrame()
@@ -168,6 +213,7 @@ namespace Arkanoid
                 platformStratPositionX, platformStratPositionY, 
                 platformSizeX, platformSizeY);
 
+            DrawBlocks();
             DrawLives();
         }
 
@@ -193,6 +239,27 @@ namespace Arkanoid
 
                 bufferGraphics.DrawImage(Properties.Resources.heart, x, y,
                     HeartSize, HeartSize);
+            }
+        }
+
+        private void DrawBlocks()
+        {
+            foreach (var block in blocks)
+            {
+                if (block.IsActive)
+                {
+                    var blockImage = block.Strength switch
+                    {
+                        3 => Properties.Resources.block3,
+                        2 => Properties.Resources.block2,
+                        1 => Properties.Resources.block1,
+                        _ => Properties.Resources.block1
+                    };
+
+                    bufferGraphics.DrawImage(blockImage,
+                        (int)block.X, (int)block.Y,
+                        block.Width, block.Height);
+                }
             }
         }
 
@@ -231,6 +298,80 @@ namespace Arkanoid
             }
         }
 
+        private void CheckBlockCollisions()
+        {
+            var ballRect = new RectangleF(ballPositionX, ballPositionY, BallSize, BallSize);
+
+            foreach (var block in blocks)
+            {
+                if (block.IsActive && ballRect.IntersectsWith(block.Rect))
+                {
+                    block.Strength--;
+
+                    if (block.Strength <= 0)
+                    {
+                        block.IsActive = false;
+                    }
+
+                    float overlapLeft = ballRect.Right - block.Rect.Left;
+                    float overlapRight = block.Rect.Right - ballRect.Left;
+                    float overlapTop = ballRect.Bottom - block.Rect.Top;
+                    float overlapBottom = block.Rect.Bottom - ballRect.Top;
+
+                    float minOverlap = Math.Min(Math.Min(overlapLeft, overlapRight),
+                                               Math.Min(overlapTop, overlapBottom));
+
+                    if (minOverlap == overlapLeft || minOverlap == overlapRight)
+                        ballVelocityX = -ballVelocityX; 
+                    else
+                        ballVelocityY = -ballVelocityY; 
+
+                    if (blocks.All(b => !b.IsActive))
+                    {
+                        NextLevel();
+                    }
+
+                    break; 
+                }
+            }
+        }
+
+        private void LoadLevel(int level)
+        {
+            blocks.Clear();
+            currentLevel = level;
+
+            int layoutIndex = Math.Min(level - 1, 2); 
+
+            for (int row = 0; row < BlocksPerColumn; row++)
+            {
+                for (int col = 0; col < BlocksPerRow; col++)
+                {
+                    int strength = levelLayouts[layoutIndex, row, col];
+
+                    if (strength > 0)
+                    {
+                        float x = BlocksStartX + col * (BlockWidth + BlockPadding);
+                        float y = BlocksStartY + row * (BlockHeight + BlockPadding);
+                        blocks.Add(new Block(x, y, BlockWidth, BlockHeight, strength));
+                    }
+                }
+            }
+        }
+
+        private void NextLevel()
+        {
+            if (currentLevel < 3)
+            {
+                LoadLevel(currentLevel + 1);
+                ResetBall();
+            }
+            else
+            {
+                ShowWinScreen(); 
+            }
+        }
+
         private void GameOver ()
         {
             isGameOver = true;
@@ -244,6 +385,31 @@ namespace Arkanoid
                 LineAlignment = StringAlignment.Center })
             {
                 bufferGraphics.DrawString("GAME OVER", font, brush,
+                    ClientSize.Width / 2, ClientSize.Height / 2 - 30, sf);
+            }
+            using (Font font = new Font("Arial", 12))
+            using (SolidBrush brush = new SolidBrush(Color.White))
+            using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center })
+            {
+                bufferGraphics.DrawString("Нажми R для рестарта или ESC для выхода", font, brush,
+                    ClientSize.Width / 2, ClientSize.Height / 2 + 20, sf);
+            }
+
+            this.Refresh();
+        }
+
+        private void ShowWinScreen()
+        {
+            isGameOver = true;
+            animationTimer.Stop();
+
+            bufferGraphics.Clear(Color.FromArgb(64, 64, 64));
+
+            using (Font font = new Font("Arial", 36, FontStyle.Bold))
+            using (SolidBrush brush = new SolidBrush(Color.White))
+            using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+            {
+                bufferGraphics.DrawString("🎉 YOU WIN! 🎉", font, brush,
                     ClientSize.Width / 2, ClientSize.Height / 2 - 30, sf);
             }
             using (Font font = new Font("Arial", 12))
@@ -306,6 +472,8 @@ namespace Arkanoid
             {
                 isGameOver = false;
                 lives = 3;
+                currentLevel = 1;
+                LoadLevel(1);
                 ResetBall();
                 platformStratPositionX = (this.ClientSize.Width - platformSizeX) / 2;
                 LastFrameTime = DateTime.Now;
@@ -316,6 +484,26 @@ namespace Arkanoid
             {
                 Application.Exit();
             }
+        }
+
+        private class Block
+        {
+            public float X, Y;
+            public int Width, Height;
+            public bool IsActive;
+            public int Strength;
+
+            public Block(float x, float y, int w, int h, int strength)
+            {
+                X = x;
+                Y = y;
+                Width = w;
+                Height = h;
+                IsActive = true;
+                Strength = strength;
+            }
+
+            public RectangleF Rect => new RectangleF(X, Y, Width, Height);
         }
     }
 }
