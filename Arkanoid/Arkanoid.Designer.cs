@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace Arkanoid.UI
+namespace Arkanoid
 {
     partial class Arkanoid : Form
     {

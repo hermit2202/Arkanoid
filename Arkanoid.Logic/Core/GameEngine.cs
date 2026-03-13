@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using Arkanoid.Models;
+﻿using System.Drawing;
+using Arkanoid.Logic.Models;
+using static Arkanoid.Logic.GameConstants;
 
-namespace Arkanoid.Core
+namespace Arkanoid.Logic.Core
 {
     /// <summary>
     /// Бизнес-логика игры Arkanoid.
@@ -12,62 +10,82 @@ namespace Arkanoid.Core
     /// </summary>
     public class GameEngine
     {
-        public const float BallSpeed = 400f;
-        public const int BallSize = 30;
-        public const int PlatformSizeX = 100;
-        public const int PlatformSizeY = 35;
-        public const int LivesBarHeight = 30;
-        public const int GameWidth = 800;
-        public const int GameHeight = 600;
-
-        private const int BlockWidth = 40;
-        private const int BlockHeight = 25;
-        private const int BlockPadding = 3;
-        private const int BlocksStartX = 79;
-        private const int BlocksStartY = 60;
-        private const int BlocksPerRow = 15;
-        private const int BlocksPerColumn = 6;
-
-        private const float MaxAngleFactor = 0.8f;
-        private const float RandomAngleFactor = 0.8f;
-        private const float RandomDistributionCenter = 0.5f;
-        private const int BallResetOffset = 5;
-        private const float HitFactorMultiplier = 2f;
-        private const float HitFactorOffset = 1f;
-
-        private const int TotalLevels = 3;
-        private const int TotalLives = 3;
-
-        private const float PowerUpDropChance = 0.08f;
-        private const float WidePlatformMultiplier = 1.5f;
-        private const float FastBallMultiplier = 1.4f;
-        private const float FireBallDuration = 5f;
-        private const float WidePlatformDuration = 15f;
-        private const float FastBallDuration = 10f;
-
+        /// <summary>
+        /// Список всех активных бонусов, которые в данный омент падают на игровом поле.
+        /// </summary>
         public List<PowerUp> ActivePowerUps { get; } = new();
-        private float _currentPlatformWidth = PlatformSizeX;
-        private bool _isFireBallActive = false;
-        private float _fireBallTimer = 0f;
-        private bool _isWidePlatformActive = false;
-        private bool _isFastBallActive = false;
-        private float _widePlatformTimer = 0f;
-        private float _fastBallTimer = 0f;
-        private const int PowerUpSize = 25;
+        private float currentPlatformWidth = GameConstants.PlatformSizeX;
+        private bool isFireBallActive = false;
+        private float fireBallTimer = 0f;
+        private bool isWidePlatformActive = false;
+        private bool isFastBallActive = false;
+        private float widePlatformTimer = 0f;
+        private float fastBallTimer = 0f;
+        private const int powerUpSize = 25;
 
+        /// <summary>
+        /// Горизонтальная позиция мяча в пикселях. 
+        /// Используется для отрисовки и расчёта коллизий. 
+        /// </summary>
         public float BallX { get; private set; }
+
+        /// <summary>
+        /// Вертикальная позиция мяча в пикселях. 
+        /// Используется для отрисовки и расчёта коллизий. 
+        /// </summary>
         public float BallY { get; private set; }
+
+        /// <summary>
+        /// Горизонтальная скорость мяча (пикселей в секунду).
+        /// Отрицательное значение — движение влево, положительное — вправо.
+        /// </summary>
         public float BallVelocityX { get; private set; }
+
+        /// <summary>
+        /// Вертикальная скорость мяча (пикселей в секунду).
+        /// Отрицательное значение — движение вверх, положительное — вниз.
+        /// </summary>
         public float BallVelocityY { get; private set; }
 
+        /// <summary>
+        /// Вертикальная позиция платформы в пикселях.
+        /// </summary>
+
         public float PlatformX { get; set; }
+
+        /// <summary>
+        /// Горизонтальная позиция платформы в пикселях.
+        /// </summary>
         public int PlatformY { get; }
 
+        /// <summary>
+        /// Количество оставщихся жизний  игрка.
+        /// </summary>
         public int Lives { get; private set; }
+
+        /// <summary>
+        /// Флаг завершения игры поражением.
+        /// </summary>
         public bool IsGameOver { get; private set; }
+
+        /// <summary>
+        /// Флаг завершения игры победой.
+        /// </summary>
         public bool IsGameWon { get; private set; }
+
+        /// <summary>
+        /// Флаг запуска игры.
+        /// </summary>
         public bool IsGameStarted { get; private set; }
+
+        /// <summary>
+        /// Номер текущего уровня.
+        /// </summary>
         public int CurrentLevel { get; private set; }
+
+        /// <summary>
+        /// Список всех блоков текущего уровня
+        /// </summary>
         public List<Block> Blocks { get; } = new();
 
         private readonly int[,,] _levelLayouts = new int[,,]
@@ -125,7 +143,10 @@ namespace Arkanoid.Core
         /// <param name="deltaTime">Время в секундах с последнего обновления.</param>
         public void Update(float deltaTime)
         {
-            if (!IsGameStarted || IsGameOver || IsGameWon) return;
+            if (!IsGameStarted || IsGameOver || IsGameWon)
+            {
+                return;
+            }
 
             MoveBall(deltaTime);
             CheckCollisions();
@@ -139,8 +160,8 @@ namespace Arkanoid.Core
         /// <param name="mouseX">Горизонтальная позиция курсора мыши.</param>
         public void MovePlatform(float mouseX)
         {
-            var targetX = mouseX - _currentPlatformWidth / 2;
-            PlatformX = Math.Max(0, Math.Min(targetX, GameWidth - _currentPlatformWidth));
+            var targetX = mouseX - currentPlatformWidth / 2;
+            PlatformX = Math.Max(0, Math.Min(targetX, GameWidth - currentPlatformWidth));
         }
 
         /// <summary>
@@ -154,13 +175,13 @@ namespace Arkanoid.Core
             Lives = TotalLives;
             CurrentLevel = 1;
 
-            _currentPlatformWidth = PlatformSizeX;
-            _isFireBallActive = false;
-            _isWidePlatformActive = false;
-            _isFastBallActive = false;
-            _fireBallTimer = 0f;
-            _widePlatformTimer = 0f;
-            _fastBallTimer = 0f;
+            currentPlatformWidth = PlatformSizeX;
+            isFireBallActive = false;
+            isWidePlatformActive = false;
+            isFastBallActive = false;
+            fireBallTimer = 0f;
+            widePlatformTimer = 0f;
+            fastBallTimer = 0f;
             ActivePowerUps.Clear();
 
             InitializeGame();
@@ -205,7 +226,6 @@ namespace Arkanoid.Core
                 else
                 {
                     ResetBall();
-                    return;
                 }
             }
         }
@@ -219,13 +239,13 @@ namespace Arkanoid.Core
         private void CheckPlatformCollision()
         {
             var ballRect = new RectangleF(BallX, BallY, BallSize, BallSize);
-            var platformRect = new RectangleF(PlatformX, PlatformY, _currentPlatformWidth, PlatformSizeY);
+            var platformRect = new RectangleF(PlatformX, PlatformY, currentPlatformWidth, PlatformSizeY);
 
             if (ballRect.IntersectsWith(platformRect) && BallVelocityY > 0)
             {
                 BallY = PlatformY - BallSize;
 
-                float hitFactor = (BallX + BallSize / HitFactorMultiplier - PlatformX) / _currentPlatformWidth;
+                var hitFactor = (BallX + BallSize / HitFactorMultiplier - PlatformX) / currentPlatformWidth;
                 hitFactor = hitFactor * HitFactorMultiplier - HitFactorOffset;
 
                 BallVelocityX = hitFactor * BallSpeed * MaxAngleFactor;
@@ -248,16 +268,16 @@ namespace Arkanoid.Core
                         TrySpawnPowerUp(block.X, block.Y);
                     }
 
-                    if (!_isFireBallActive)
+                    if (!isFireBallActive)
                     {
-                        float overlapLeft = ballRect.Right - block.Rect.Left;
-                        float overlapRight = block.Rect.Right - ballRect.Left;
-                        float overlapTop = ballRect.Bottom - block.Rect.Top;
-                        float overlapBottom = block.Rect.Bottom - ballRect.Top;
+                        var overlapLeft = ballRect.Right - block.Rect.Left;
+                        var overlapRight = block.Rect.Right - ballRect.Left;
+                        var overlapTop = ballRect.Bottom - block.Rect.Top;
+                        var overlapBottom = block.Rect.Bottom - ballRect.Top;
 
-                        float minHorizontal = Math.Min(overlapLeft, overlapRight);
-                        float minVertical = Math.Min(overlapTop, overlapBottom);
-                        float minOverlap = Math.Min(minHorizontal, minVertical);
+                        var minHorizontal = Math.Min(overlapLeft, overlapRight);
+                        var minVertical = Math.Min(overlapTop, overlapBottom);
+                        var minOverlap = Math.Min(minHorizontal, minVertical);
 
                         if (minOverlap == overlapLeft || minOverlap == overlapRight)
                             BallVelocityX = -BallVelocityX;
@@ -287,25 +307,21 @@ namespace Arkanoid.Core
             }
         }
 
-        /// <summary>
-        /// Загружает блоки указанного уровня.
-        /// </summary>
-        /// <param name="level">Номер уровня.</param>
-        public void LoadLevel(int level)
+        private void LoadLevel(int level)
         {
             Blocks.Clear();
             CurrentLevel = level;
-            int layoutIndex = Math.Min(level - 1, TotalLevels - 1);
+            var layoutIndex = Math.Min(level - 1, TotalLevels - 1);
 
-            for (int row = 0; row < BlocksPerColumn; row++)
+            for (var row = 0; row < BlocksPerColumn; row++)
             {
-                for (int col = 0; col < BlocksPerRow; col++)
+                for (var col = 0; col < BlocksPerRow; col++)
                 {
-                    int strength = _levelLayouts[layoutIndex, row, col];
+                    var strength = _levelLayouts[layoutIndex, row, col];
                     if (strength > 0)
                     {
-                        float x = BlocksStartX + col * (BlockWidth + BlockPadding);
-                        float y = BlocksStartY + row * (BlockHeight + BlockPadding);
+                        var x = BlocksStartX + col * (BlockWidth + BlockPadding);
+                        var y = BlocksStartY + row * (BlockHeight + BlockPadding);
                         Blocks.Add(new Block(x, y, BlockWidth, BlockHeight, strength));
                     }
                 }
@@ -354,36 +370,36 @@ namespace Arkanoid.Core
 
         private void UpdateEffectTimers(float deltaTime)
         {
-            if (!_isFireBallActive && !_isWidePlatformActive && !_isFastBallActive)
+            if (!isFireBallActive && !isWidePlatformActive && !isFastBallActive)
             {
                 return;
             }
 
-            if (_isFireBallActive)
+            if (isFireBallActive)
             {
-                _fireBallTimer -= deltaTime;
-                if (_fireBallTimer <= 0)
+                fireBallTimer -= deltaTime;
+                if (fireBallTimer <= 0)
                 {
-                    _isFireBallActive = false;
+                    isFireBallActive = false;
                 }
             }
 
-            if (_isWidePlatformActive)
+            if (isWidePlatformActive)
             {
-                _widePlatformTimer -= deltaTime;
-                if (_widePlatformTimer <= 0)
+                widePlatformTimer -= deltaTime;
+                if (widePlatformTimer <= 0)
                 {
-                    _isWidePlatformActive = false;
-                    _currentPlatformWidth = PlatformSizeX;  
+                    isWidePlatformActive = false;
+                    currentPlatformWidth = PlatformSizeX;  
                 }
             }
 
-            if (_isFastBallActive)
+            if (isFastBallActive)
             {
-                _fastBallTimer -= deltaTime;
-                if (_fastBallTimer <= 0)
+                fastBallTimer -= deltaTime;
+                if (fastBallTimer <= 0)
                 {
-                    _isFastBallActive = false;
+                    isFastBallActive = false;
                     BallVelocityX /= FastBallMultiplier;
                     BallVelocityY /= FastBallMultiplier;
                 }
@@ -393,7 +409,7 @@ namespace Arkanoid.Core
         private bool CheckPowerUpCollection(PowerUp powerUp)
         {
             var powerUpRect = powerUp.Rect;
-            var platformRect = new RectangleF(PlatformX, PlatformY, _currentPlatformWidth, PlatformSizeY);
+            var platformRect = new RectangleF(PlatformX, PlatformY, currentPlatformWidth, PlatformSizeY);
             return powerUpRect.IntersectsWith(platformRect);
         }
 
@@ -402,19 +418,19 @@ namespace Arkanoid.Core
             switch (type)
             {
                 case PowerUpType.WidePlatform:
-                    _isWidePlatformActive = true;
-                    _widePlatformTimer = WidePlatformDuration;
-                    _currentPlatformWidth = PlatformSizeX * WidePlatformMultiplier;
+                    isWidePlatformActive = true;
+                    widePlatformTimer = WidePlatformDuration;
+                    currentPlatformWidth = PlatformSizeX * WidePlatformMultiplier;
                     break;
 
                 case PowerUpType.FireBall:
-                    _isFireBallActive = true;
-                    _fireBallTimer = FireBallDuration;
+                    isFireBallActive = true;
+                    fireBallTimer = FireBallDuration;
                     break;
 
                 case PowerUpType.FastBall:
-                    _isFastBallActive = true;
-                    _fastBallTimer = FastBallDuration;
+                    isFastBallActive = true;
+                    fastBallTimer = FastBallDuration;
                     BallVelocityX *= FastBallMultiplier;
                     BallVelocityY *= FastBallMultiplier;
                     break;
@@ -426,7 +442,7 @@ namespace Arkanoid.Core
             if (_random.NextDouble() < PowerUpDropChance)
             {
                 var type = _powerUpTypes[_random.Next(_powerUpTypes.Length)];
-                var powerUp = new PowerUp(blockX + BlockWidth / 2f - PowerUpSize / 2f, blockY, type);
+                var powerUp = new PowerUp(blockX + BlockWidth / 2f - powerUpSize / 2f, blockY, type);
                 ActivePowerUps.Add(powerUp);
             }
         }
@@ -436,6 +452,6 @@ namespace Arkanoid.Core
         ///Используется для корректной отрисовки платформы и расчёта коллизий.
         /// </summary>
         /// <returns>Текущая ширина платформы в пикселях.</returns>
-        public float GetCurrentPlatformWidth() => _currentPlatformWidth;
+        public float GetCurrentPlatformWidth() => currentPlatformWidth;
     }
 }

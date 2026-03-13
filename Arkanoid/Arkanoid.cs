@@ -1,10 +1,9 @@
-using Arkanoid.Core;
-using Arkanoid.Models;
-using System;
-using System.Drawing;
-using System.Windows.Forms;
+using Arkanoid.WinForms.Properties;
+using Arkanoid.Logic.Core;
+using Arkanoid.Logic.Models;
+using static Arkanoid.Logic.GameConstants;
 
-namespace Arkanoid.UI
+namespace Arkanoid
 {
     /// <summary>
     /// Основное окно игры. Отвечает за отрисовку графики, 
@@ -65,17 +64,17 @@ namespace Arkanoid.UI
 
         private void SetupForm()
         {
-            this.SetStyle(
+            SetStyle(
                 ControlStyles.AllPaintingInWmPaint |
                 ControlStyles.UserPaint |
                 ControlStyles.Opaque,
                 true);
-            this.UpdateStyles();
+            UpdateStyles();
 
-            this.FormBorderStyle = FormBorderStyle.FixedSingle;
-            this.MaximizeBox = false;
-            this.ClientSize = new Size(GameEngine.GameWidth, GameEngine.GameHeight);
-            this.StartPosition = FormStartPosition.CenterScreen;
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+            MaximizeBox = false;
+            ClientSize = new Size(GameWidth, GameHeight);
+            StartPosition = FormStartPosition.CenterScreen;
         }
 
         private void SetupTimer()
@@ -100,15 +99,15 @@ namespace Arkanoid.UI
 
             _engine = new GameEngine();
 
-            _ballImage = Properties.Resources.ball;
-            _platformImage = Properties.Resources.platform;
-            _heartImage = Properties.Resources.heart;
-            _block1Image = Properties.Resources.block1;
-            _block2Image = Properties.Resources.block2;
-            _block3Image = Properties.Resources.block3;
-            _powerUpWidePlatform = Properties.Resources.powerup_wide;
-            _powerUpFireBall = Properties.Resources.powerup_fire;
-            _powerUpFastBall = Properties.Resources.powerup_fast;
+            _ballImage = global::Arkanoid.WinForms.Properties.Resources.ball;
+            _platformImage = global::Arkanoid.WinForms.Properties.Resources.platform;
+            _heartImage = global::Arkanoid.WinForms.Properties.Resources.heart;
+            _block1Image = global::Arkanoid.WinForms.Properties.Resources.block1;
+            _block2Image = global::Arkanoid.WinForms.Properties.Resources.block2;
+            _block3Image = global::Arkanoid.WinForms.Properties.Resources.block3;
+            _powerUpWidePlatform = global::Arkanoid.WinForms.Properties.Resources.powerup_wide;
+            _powerUpFireBall = global::Arkanoid.WinForms.Properties.Resources.powerup_fire;
+            _powerUpFastBall = global::Arkanoid.WinForms.Properties.Resources.powerup_fast;
 
             ShowStartScreen();
         }
@@ -165,15 +164,15 @@ namespace Arkanoid.UI
                 _ballImage,
                 (int)_engine.BallX,
                 (int)_engine.BallY,
-                GameEngine.BallSize,
-                GameEngine.BallSize);
+                BallSize,
+                BallSize);
 
             _bufferGraphics.DrawImage(
                 _platformImage,
                 (int)_engine.PlatformX,
                 _engine.PlatformY,
                 (int)_engine.GetCurrentPlatformWidth(),
-                GameEngine.PlatformSizeY);
+                PlatformSizeY);
 
             DrawBlocks();
             DrawPowerUps();

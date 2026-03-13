@@ -1,3 +1,4 @@
 <Solution>
-  <Project Path="Arkanoid/Arkanoid.csproj" />
+  <Project Path="Arkanoid.Logic/Arkanoid.Logic.csproj" Id="2d4bf06f-4697-463e-8dcc-cc6dd2f3e5f8" />
+  <Project Path="Arkanoid/Arkanoid.WinForms.csproj" />
 </Solution>
