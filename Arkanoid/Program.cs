@@ -1,7 +1,7 @@
-namespace Arkanoid
+namespace Arkanoid.WinForms
 {
     /// <summary>
-    /// Точка входа в приложение Arkonoid.
+    /// Точка входа в приложение Arkanoid.
     /// Инициализирует среду для выполнения Windows Forms.
     /// </summary>
     internal static class Program

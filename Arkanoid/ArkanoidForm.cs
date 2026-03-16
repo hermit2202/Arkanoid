@@ -1,9 +1,10 @@
-using Arkanoid.WinForms.Properties;
 using Arkanoid.Logic.Core;
 using Arkanoid.Logic.Models;
+using Arkanoid.WinForms.Properties;
 using static Arkanoid.Logic.GameConstants;
+using static Arkanoid.WinForms.FormConstants;
 
-namespace Arkanoid
+namespace Arkanoid.WinForms
 {
     /// <summary>
     /// Основное окно игры. Отвечает за отрисовку графики, 
@@ -11,44 +12,20 @@ namespace Arkanoid
     /// </summary>
     public partial class Arkanoid : Form
     {
-        private const int TimerInterval = 16;
-        private const float DeltaTime = 0.016f;
+        private Bitmap bufferBitmap = null!;
+        private Graphics bufferGraphics = null!;
+        private System.Windows.Forms.Timer timer = null!;
+        private GameEngine engine = null!;
 
-        private const int LivesBarHeight = 30;
-        private const int HeartSize = 24;
-        private const int HeartSpacing = 8;
-        private const int LivesPaddingRight = 20;
-        private const int LivesPaddingTop = 3;
-        private const int LivesLineThickness = 2;
-
-        private static readonly Color OverlayColor = Color.FromArgb(128, Color.Black);
-        private static readonly Color LivesBarColor = Color.FromArgb(40, 40, 40);
-        private static readonly Color LivesLineColor = Color.FromArgb(80, 80, 80);
-        private static readonly Color TextColor = Color.White;
-
-        private const float TitleFontSize = 36f;
-        private const float SubtitleFontSize = 24f;
-        private const float InfoFontSize = 12f;
-
-        private const int CenterDivisor = 2;
-        private const int StartScreenTextYOffset = 30;
-        private const int GameOverTextYOffset = -30;
-        private const int InfoTextYOffset = 20;
-
-        private Bitmap _bufferBitmap = null!;
-        private Graphics _bufferGraphics = null!;
-        private System.Windows.Forms.Timer _timer = null!;
-        private GameEngine _engine = null!;
-
-        private Image _ballImage = null!;
-        private Image _platformImage = null!;
-        private Image _heartImage = null!;
-        private Image _block1Image = null!;
-        private Image _block2Image = null!;
-        private Image _block3Image = null!;
-        private Image _powerUpWidePlatform = null!;
-        private Image _powerUpFireBall = null!;
-        private Image _powerUpFastBall = null!;
+        private Image ballImage = null!;
+        private Image platformImage = null!;
+        private Image heartImage = null!;
+        private Image block1Image = null!;
+        private Image block2Image = null!;
+        private Image block3Image = null!;
+        private Image powerUpWidePlatform = null!;
+        private Image powerUpFireBall = null!;
+        private Image powerUpFastBall = null!;
 
         /// <summary>
         /// Инициализирует новый экземпляр формы Arkanoid.
@@ -79,74 +56,74 @@ namespace Arkanoid
 
         private void SetupTimer()
         {
-            _timer = new System.Windows.Forms.Timer { Interval = TimerInterval };
-            _timer.Tick += OnTimerTick;
+            timer = new System.Windows.Forms.Timer { Interval = TimerInterval };
+            timer.Tick += OnTimerTick;
         }
 
         private void SetupEvents()
         {
-            this.Paint += OnPaint;
-            this.Load += OnLoad;
-            this.MouseMove += OnMouseMove;
-            this.KeyPreview = true;
-            this.KeyDown += OnKeyDown;
+            Paint += OnPaint;
+            Load += OnLoad;
+            MouseMove += OnMouseMove;
+            KeyPreview = true;
+            KeyDown += OnKeyDown;
         }
 
         private void OnLoad(object? sender, EventArgs e)
         {
-            _bufferBitmap = new Bitmap(ClientSize.Width, ClientSize.Height);
-            _bufferGraphics = Graphics.FromImage(_bufferBitmap);
+            bufferBitmap = new Bitmap(ClientSize.Width, ClientSize.Height);
+            bufferGraphics = Graphics.FromImage(bufferBitmap);
 
-            _engine = new GameEngine();
+            engine = new GameEngine();
 
-            _ballImage = global::Arkanoid.WinForms.Properties.Resources.ball;
-            _platformImage = global::Arkanoid.WinForms.Properties.Resources.platform;
-            _heartImage = global::Arkanoid.WinForms.Properties.Resources.heart;
-            _block1Image = global::Arkanoid.WinForms.Properties.Resources.block1;
-            _block2Image = global::Arkanoid.WinForms.Properties.Resources.block2;
-            _block3Image = global::Arkanoid.WinForms.Properties.Resources.block3;
-            _powerUpWidePlatform = global::Arkanoid.WinForms.Properties.Resources.powerup_wide;
-            _powerUpFireBall = global::Arkanoid.WinForms.Properties.Resources.powerup_fire;
-            _powerUpFastBall = global::Arkanoid.WinForms.Properties.Resources.powerup_fast;
+            ballImage = Resources.ball;
+            platformImage = Resources.platform;
+            heartImage = Resources.heart;
+            block1Image = Resources.block1;
+            block2Image = Resources.block2;
+            block3Image = Resources.block3;
+            powerUpWidePlatform = Resources.powerup_wide;
+            powerUpFireBall = Resources.powerup_fire;
+            powerUpFastBall = Resources.powerup_fast;
 
             ShowStartScreen();
         }
 
         private void OnTimerTick(object? sender, EventArgs e)
         {
-            _engine.Update(DeltaTime);
+            engine.Update(DeltaTime);
             DrawFrame();
-            this.Refresh();
+            Refresh();
         }
 
         private void OnPaint(object? sender, PaintEventArgs e)
         {
-            e.Graphics.DrawImage(_bufferBitmap, 0, 0);
+            e.Graphics.DrawImage(bufferBitmap, 0, 0);
         }
 
         private void OnMouseMove(object? sender, MouseEventArgs e)
         {
-            if (!_engine.IsGameStarted || _engine.IsGameOver || _engine.IsGameWon)
+            if (!engine.IsGameStarted || engine.IsGameOver || engine.IsGameWon)
             {
                 return;
             }
 
-            _engine.MovePlatform(e.X);
+            engine.MovePlatform(e.X);
         }
 
         private void OnKeyDown(object? sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Space && !_engine.IsGameStarted && !_engine.IsGameOver && !_engine.IsGameWon)
+            if (e.KeyCode == Keys.Space && !engine.IsGameStarted && !engine.IsGameOver && !engine.IsGameWon)
             {
-                _engine.Start();
-                _timer.Start();
+                engine.Start();
+                timer.Start();
                 return;
             }
 
-            if (e.KeyCode == Keys.R && (_engine.IsGameOver || _engine.IsGameWon))
+            if (e.KeyCode == Keys.R && (engine.IsGameOver || engine.IsGameWon))
             {
-                _engine.RestartGame();
-                _timer.Start();
+                engine.RestartGame();
+                timer.Start();
                 return;
             }
 
@@ -158,46 +135,53 @@ namespace Arkanoid
 
         private void DrawFrame()
         {
-            _bufferGraphics.Clear(Color.Black);
+            bufferGraphics.Clear(Color.Black);
 
-            _bufferGraphics.DrawImage(
-                _ballImage,
-                (int)_engine.BallX,
-                (int)_engine.BallY,
+            bufferGraphics.DrawImage(
+                ballImage,
+                (int)engine.BallX,
+                (int)engine.BallY,
                 BallSize,
                 BallSize);
 
-            _bufferGraphics.DrawImage(
-                _platformImage,
-                (int)_engine.PlatformX,
-                _engine.PlatformY,
-                (int)_engine.GetCurrentPlatformWidth(),
+            bufferGraphics.DrawImage(
+                platformImage,
+                (int)engine.PlatformX,
+                engine.PlatformY,
+                (int)engine.GetCurrentPlatformWidth(),
                 PlatformSizeY);
 
             DrawBlocks();
             DrawPowerUps();
             DrawLives();
 
-            if (_engine.IsGameOver)
+            if (engine.IsGameOver)
+            {
                 DrawGameOverOverlay();
-            else if (_engine.IsGameWon)
+            }
+            else if (engine.IsGameWon)
+            {
                 DrawWinOverlay();
+            }
         }
 
         private void DrawBlocks()
         {
-            foreach (var block in _engine.Blocks)
+            foreach (var block in engine.Blocks)
             {
-                if (!block.IsActive) continue;
+                if (!block.IsActive)
+                {
+                    continue;
+                }
 
                 var blockImage = block.Strength switch
                 {
-                    3 => _block3Image,
-                    2 => _block2Image,
-                    _ => _block1Image
+                    3 => block3Image,
+                    2 => block2Image,
+                    _ => block1Image
                 };
 
-                _bufferGraphics.DrawImage(
+                bufferGraphics.DrawImage(
                     blockImage,
                     (int)block.X,
                     (int)block.Y,
@@ -210,42 +194,45 @@ namespace Arkanoid
         {
             using (var barBrush = new SolidBrush(LivesBarColor))
             {
-                _bufferGraphics.FillRectangle(barBrush, 0, 0,
+                bufferGraphics.FillRectangle(barBrush, 0, 0,
                     ClientSize.Width, LivesBarHeight);
             }
 
             using (var linePen = new Pen(LivesLineColor, LivesLineThickness))
             {
-                _bufferGraphics.DrawLine(linePen, 0, LivesBarHeight,
+                bufferGraphics.DrawLine(linePen, 0, LivesBarHeight,
                     ClientSize.Width, LivesBarHeight);
             }
 
-            for (var i = 0; i < _engine.Lives; i++)
+            for (var i = 0; i < engine.Lives; i++)
             {
                 var x = ClientSize.Width - LivesPaddingRight - (i + 1) *
                     HeartSize - i * HeartSpacing;
                 var y = LivesPaddingTop;
 
-                _bufferGraphics.DrawImage(_heartImage, x, y,
+                bufferGraphics.DrawImage(heartImage, x, y,
                     HeartSize, HeartSize);
             }
         }
 
         private void DrawPowerUps()
         {
-            foreach (var powerUp in _engine.ActivePowerUps)
+            foreach (var powerUp in engine.ActivePowerUps)
             {
-                if (!powerUp.IsActive) continue;
-
-                Image powerUpImage = powerUp.Type switch
+                if (!powerUp.IsActive)
                 {
-                    PowerUpType.WidePlatform => _powerUpWidePlatform,
-                    PowerUpType.FireBall => _powerUpFireBall,
-                    PowerUpType.FastBall => _powerUpFastBall,
-                    _ => _powerUpWidePlatform
+                    continue;
+                }
+
+                var powerUpImage = powerUp.Type switch
+                {
+                    PowerUpType.WidePlatform => powerUpWidePlatform,
+                    PowerUpType.FireBall => powerUpFireBall,
+                    PowerUpType.FastBall => powerUpFastBall,
+                    _ => powerUpWidePlatform
                 };
 
-                _bufferGraphics.DrawImage(
+                bufferGraphics.DrawImage(
                     powerUpImage,
                     (int)powerUp.X,
                     (int)powerUp.Y,
@@ -256,7 +243,7 @@ namespace Arkanoid
 
         private void ShowStartScreen()
         {
-            _bufferGraphics.Clear(Color.Black);
+            bufferGraphics.Clear(Color.Black);
 
             using (var titleFont = new Font("Arial", TitleFontSize, FontStyle.Bold))
             using (var titleBrush = new SolidBrush(TextColor))
@@ -266,7 +253,7 @@ namespace Arkanoid
                 LineAlignment = StringAlignment.Center
             })
             {
-                _bufferGraphics.DrawString(
+                bufferGraphics.DrawString(
                     "ARKANOID",
                     titleFont,
                     titleBrush,
@@ -279,7 +266,7 @@ namespace Arkanoid
             using (var brush = new SolidBrush(TextColor))
             using (var sf = new StringFormat { Alignment = StringAlignment.Center })
             {
-                _bufferGraphics.DrawString(
+                bufferGraphics.DrawString(
                     "Нажми ПРОБЕЛ для старта\nESC для выхода",
                     font,
                     brush,
@@ -288,14 +275,14 @@ namespace Arkanoid
                     sf);
             }
 
-            this.Refresh();
+            Refresh();
         }
 
         private void DrawGameOverOverlay()
         {
             using (var overlayBrush = new SolidBrush(OverlayColor))
             {
-                _bufferGraphics.FillRectangle(overlayBrush, 0, 0, ClientSize.Width, ClientSize.Height);
+                bufferGraphics.FillRectangle(overlayBrush, 0, 0, ClientSize.Width, ClientSize.Height);
             }
 
             using (var font = new Font("Arial", SubtitleFontSize, FontStyle.Bold))
@@ -306,7 +293,7 @@ namespace Arkanoid
                 LineAlignment = StringAlignment.Center
             })
             {
-                _bufferGraphics.DrawString(
+                bufferGraphics.DrawString(
                     "GAME OVER",
                     font,
                     brush,
@@ -319,7 +306,7 @@ namespace Arkanoid
             using (var brush = new SolidBrush(TextColor))
             using (var sf = new StringFormat { Alignment = StringAlignment.Center })
             {
-                _bufferGraphics.DrawString(
+                bufferGraphics.DrawString(
                     "Нажми R для рестарта или ESC для выхода",
                     font,
                     brush,
@@ -333,7 +320,7 @@ namespace Arkanoid
         {
             using (var overlayBrush = new SolidBrush(OverlayColor))
             {
-                _bufferGraphics.FillRectangle(overlayBrush, 0, 0, ClientSize.Width, ClientSize.Height);
+                bufferGraphics.FillRectangle(overlayBrush, 0, 0, ClientSize.Width, ClientSize.Height);
             }
 
             using (var font = new Font("Arial", TitleFontSize, FontStyle.Bold))
@@ -344,7 +331,7 @@ namespace Arkanoid
                 LineAlignment = StringAlignment.Center
             })
             {
-                _bufferGraphics.DrawString(
+                bufferGraphics.DrawString(
                     "YOU WIN!",
                     font,
                     brush,
@@ -357,7 +344,7 @@ namespace Arkanoid
             using (var brush = new SolidBrush(TextColor))
             using (var sf = new StringFormat { Alignment = StringAlignment.Center })
             {
-                _bufferGraphics.DrawString(
+                bufferGraphics.DrawString(
                     "Нажми R для рестарта или ESC для выхода",
                     font,
                     brush,
