@@ -37,5 +37,9 @@
         public const float PowerUpDropChance = 0.08f;
         public const float WidePlatformMultiplier = 1.5f;
         public const float FastBallMultiplier = 1.4f;
+
+        public const float WidePlatformDuration = 10f;
+        public const float FireBallDuration = 8f;
+        public const float FastBallDuration = 10f;
     }
 }
